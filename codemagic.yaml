@@ -21,42 +21,36 @@ workflows:
         script: |
           cd AbleMusicPlayer-master
           echo "sdk.dir=$ANDROID_SDK_ROOT" > "local.properties"
-      - name: Inspect and enhance Gradle settings
+      - name: Update dependency settings
         script: |
           cd AbleMusicPlayer-master
           echo "Original settings.gradle.kts content:"
           cat settings.gradle.kts
           
-          # Create gradle.properties with JitPack authentication workaround
-          echo "Adding GitHub authentication workaround to gradle.properties"
-          echo "# Added for CI build to avoid JitPack rate limiting" >> gradle.properties
-          echo "authToken=jp_123456789" >> gradle.properties
+          # Backup original settings file
+          cp settings.gradle.kts settings.gradle.kts.bak
           
-          # Create or modify init.gradle for global JitPack configuration
-          mkdir -p ~/.gradle
-          cat > ~/.gradle/init.gradle << EOF
-          allprojects {
-              repositories {
-                  maven {
-                      url "https://jitpack.io"
-                      credentials { username authToken }
-                  }
-              }
-          }
-          EOF
+          # Update settings.gradle.kts to use an authentication token with JitPack
+          sed -i '' 's|maven(url = "https://jitpack.io")|maven { url = uri("https://jitpack.io"); credentials { username = "jp_123456789" } }|g' settings.gradle.kts
           
-          echo "Updated gradle.properties content:"
-          cat gradle.properties
-      - name: Show project dependencies
+          echo "Updated settings.gradle.kts content:"
+          cat settings.gradle.kts
+          
+          # Update version of NewPipeExtractor if needed
+          find . -name "*.gradle" -o -name "*.gradle.kts" | xargs grep -l "NewPipeExtractor" | xargs cat
+      - name: Try direct download of dependency
+        script: |
+          cd AbleMusicPlayer-master
+          mkdir -p libs
+          curl -L "https://jitpack.io/com/github/TeamNewPipe/NewPipeExtractor/v0.24.2/NewPipeExtractor-v0.24.2.jar" -o libs/NewPipeExtractor-v0.24.2.jar || echo "Failed to download jar directly"
+          # Create local.properties with custom maven local
+          echo "maven.local=./libs" >> local.properties
+      - name: Build with specific configuration
         script: |
           cd AbleMusicPlayer-master
           chmod +x ./gradlew
-          ./gradlew :core:services:dependencies --configuration debugCompileClasspath | grep -A 5 NewPipeExtractor
-      - name: Attempt build with offline mode
-        script: |
-          cd AbleMusicPlayer-master
-          chmod +x ./gradlew
-          ./gradlew assembleDebug --stacktrace --refresh-dependencies
+          # Try to build with specific flags to handle dependency issues
+          ./gradlew assembleDebug --stacktrace --refresh-dependencies --no-configuration-cache
     artifacts:
       - AbleMusicPlayer-master/app/build/outputs/apk/debug/*.apk
     publishing:
