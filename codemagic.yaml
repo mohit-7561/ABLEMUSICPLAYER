@@ -11,8 +11,20 @@ workflows:
       - name: Set up local properties
         script: |
           echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
+      - name: Debug directory structure and permissions
+        script: |
+          echo "Current directory: $(pwd)"
+          ls -la
+          if [ -f "./gradlew" ]; then
+            echo "gradlew exists, making it executable"
+            chmod +x ./gradlew
+          else
+            echo "gradlew not found in current directory"
+            find . -name "gradlew" -type f
+          fi
       - name: Build debug APK
         script: |
+          chmod +x ./gradlew
           ./gradlew assembleDebug
     artifacts:
       - app/build/outputs/apk/debug/*.apk
