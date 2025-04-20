@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#303f9f</color>
+    <color name="colorPrimaryDark">#212121</color>
+    <color name="colorAccent">#5e92f3</color>
+    <color name="white">#fbfbfb</color>
+    <color name="black">#000000</color>
+    <color name="thatAccent">#5e92f3</color>
+    <color name="welcome_bg">#242424</color>
+    
+    
+   
+<color name="gray">#FF888888</color>
+<color name="purple_200">#FFBB86FC</color>
+
+     <color name="dark_background">#121212</color>
+        <color name="surface_dark">#1E1E1E</color>
+    <color name="background_color">#121212</color>
+    <color name="surface_color">#1E1E1E</color>
+    <color name="primary_color">#BB86FC</color>
+    <color name="white_60">#99FFFFFF</color>
+    <color name="accent">#BB86FC</color>
+    
+</resources>
