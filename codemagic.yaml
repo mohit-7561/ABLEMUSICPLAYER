@@ -57,19 +57,19 @@ workflows:
           mkdir -p core/services/src/main/java/org/schabi/newpipe/extractor
           
           # Create a minimal stub class to satisfy imports during compilation
-          cat > core/services/src/main/java/org/schabi/newpipe/extractor/NewPipe.java << 'EOF'
-package org.schabi.newpipe.extractor;
-
-// This is a stub class for building test version without actual NewPipeExtractor
-public class NewPipe {
-    public static NewPipe getInstance() {
-        return new NewPipe();
-    }
-    
-    // Add stub methods as needed
-    public void init() {}
-}
-EOF
+          cat << 'EOFJAVA' > core/services/src/main/java/org/schabi/newpipe/extractor/NewPipe.java
+          package org.schabi.newpipe.extractor;
+          
+          // This is a stub class for building test version without actual NewPipeExtractor
+          public class NewPipe {
+              public static NewPipe getInstance() {
+                  return new NewPipe();
+              }
+              
+              // Add stub methods as needed
+              public void init() {}
+          }
+          EOFJAVA
       - name: Build simplified test version
         script: |
           cd AbleMusicPlayer-master
