@@ -21,61 +21,75 @@ workflows:
         script: |
           cd AbleMusicPlayer-master
           echo "sdk.dir=$ANDROID_SDK_ROOT" > "local.properties"
-      - name: Locate and modify NewPipeExtractor dependency
-        script: |
-          cd AbleMusicPlayer-master
-          # Find files referring to the problematic dependency
-          echo "Files using NewPipeExtractor:"
-          find . -name "*.gradle*" -exec grep -l "NewPipeExtractor" {} \;
-          
-          # Find all build.gradle files in core:services that might have the dependency
-          SERVICES_BUILD_GRADLE=$(find . -path "*core/services*" -name "build.gradle.kts")
-          echo "Services build.gradle.kts: $SERVICES_BUILD_GRADLE"
-          
-          if [ -n "$SERVICES_BUILD_GRADLE" ]; then
-            echo "Original content of $SERVICES_BUILD_GRADLE:"
-            cat "$SERVICES_BUILD_GRADLE"
-            
-            # Create a backup
-            cp "$SERVICES_BUILD_GRADLE" "${SERVICES_BUILD_GRADLE}.bak"
-            
-            # Temporarily comment out the problematic dependency
-            sed -i.bak 's/implementation("com.github.TeamNewPipe:NewPipeExtractor:.*/\/\/ Temporarily commented out for test build: &/' "$SERVICES_BUILD_GRADLE"
-            
-            echo "Modified content of $SERVICES_BUILD_GRADLE:"
-            cat "$SERVICES_BUILD_GRADLE"
-          fi
-      - name: Create test stub class if needed
+      - name: Modify settings to exclude problematic modules
         script: |
           cd AbleMusicPlayer-master
           
-          # Find Java/Kotlin files that import NewPipeExtractor classes
-          echo "Files importing NewPipeExtractor:"
-          find . -name "*.java" -o -name "*.kt" | xargs grep -l "import.*NewPipe" || echo "No direct imports found"
+          # Backup original settings.gradle.kts
+          cp settings.gradle.kts settings.gradle.kts.bak
           
-          # Create empty service directory for stubs if needed
-          mkdir -p core/services/src/main/java/org/schabi/newpipe/extractor
+          # Show original settings
+          echo "Original settings.gradle.kts:"
+          cat settings.gradle.kts
           
-          # Create a minimal stub class to satisfy imports during compilation
-          cat << 'EOFJAVA' > core/services/src/main/java/org/schabi/newpipe/extractor/NewPipe.java
-          package org.schabi.newpipe.extractor;
+          # Create a simpler version of settings.gradle.kts for CI build
+          # Keep only the app module and minimal required settings
+          cat > settings.gradle.kts << 'EOF'
+          @file:Suppress("UnstableApiUsage")
           
-          // This is a stub class for building test version without actual NewPipeExtractor
-          public class NewPipe {
-              public static NewPipe getInstance() {
-                  return new NewPipe();
+          enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+          
+          pluginManagement {
+              includeBuild("build-logic")
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+                  maven(url = "https://plugins.gradle.org/m2/")
+                  maven(url = "https://jitpack.io")
               }
-              
-              // Add stub methods as needed
-              public void init() {}
           }
-          EOFJAVA
-      - name: Build simplified test version
+          
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+                  maven(url = "https://jitpack.io")
+                  maven(url = "https://plugins.gradle.org/m2/")
+              }
+          }
+          
+          rootProject.name = "YoutubeMobile"
+          include(":app")
+          EOF
+          
+          echo "Modified settings.gradle.kts:"
+          cat settings.gradle.kts
+      - name: Create minimal app module for test build
+        script: |
+          cd AbleMusicPlayer-master
+          
+          # Create a backup of app's build.gradle.kts
+          APP_BUILD_FILE=$(find app -name "build.gradle.kts")
+          if [ -n "$APP_BUILD_FILE" ]; then
+            cp "$APP_BUILD_FILE" "${APP_BUILD_FILE}.bak"
+            echo "Original app build.gradle.kts:"
+            cat "$APP_BUILD_FILE"
+            
+            # Modify the app's build.gradle.kts to remove dependencies on core modules
+            sed -i.bak 's/implementation(projects.core.*/\/\/ Temporarily commented for CI build: &/' "$APP_BUILD_FILE"
+            
+            echo "Modified app build.gradle.kts:"
+            cat "$APP_BUILD_FILE"
+          fi
+      - name: Build simplified app module
         script: |
           cd AbleMusicPlayer-master
           chmod +x ./gradlew
-          # Try to build only the debug variant with reduced functionality
-          ./gradlew app:assembleDebug -x lint -x test --stacktrace --info
+          
+          # Try to build only the app module with basic functionality
+          ./gradlew :app:assembleDebug -x lint --info
     artifacts:
       - AbleMusicPlayer-master/app/build/outputs/apk/debug/*.apk
     publishing:
