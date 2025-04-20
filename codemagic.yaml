@@ -21,11 +21,26 @@ workflows:
         script: |
           cd AbleMusicPlayer-master
           echo "sdk.dir=$ANDROID_SDK_ROOT" > "local.properties"
+      - name: Configure JitPack repository
+        script: |
+          cd AbleMusicPlayer-master
+          # Check repositories in settings.gradle.kts or build.gradle
+          cat settings.gradle.kts || echo "settings.gradle.kts not found"
+          # Update settings.gradle.kts to ensure JitPack is included
+          if grep -q "jitpack.io" settings.gradle.kts; then
+            echo "JitPack repository already configured"
+          else
+            echo "Adding JitPack repository configuration"
+            # Create a backup of the original file
+            cp settings.gradle.kts settings.gradle.kts.bak
+            # Add JitPack repository to the dependencyResolutionManagement block
+            sed -i.bak '/dependencyResolutionManagement {/,/}/s/repositories {/repositories {\n        maven { url = uri("https:\/\/jitpack.io") }/' settings.gradle.kts
+          fi
       - name: Build debug APK
         script: |
           cd AbleMusicPlayer-master
           chmod +x ./gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --stacktrace
     artifacts:
       - AbleMusicPlayer-master/app/build/outputs/apk/debug/*.apk
     publishing:
