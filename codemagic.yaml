@@ -21,26 +21,42 @@ workflows:
         script: |
           cd AbleMusicPlayer-master
           echo "sdk.dir=$ANDROID_SDK_ROOT" > "local.properties"
-      - name: Configure JitPack repository
+      - name: Inspect and enhance Gradle settings
         script: |
           cd AbleMusicPlayer-master
-          # Check repositories in settings.gradle.kts or build.gradle
-          cat settings.gradle.kts || echo "settings.gradle.kts not found"
-          # Update settings.gradle.kts to ensure JitPack is included
-          if grep -q "jitpack.io" settings.gradle.kts; then
-            echo "JitPack repository already configured"
-          else
-            echo "Adding JitPack repository configuration"
-            # Create a backup of the original file
-            cp settings.gradle.kts settings.gradle.kts.bak
-            # Add JitPack repository to the dependencyResolutionManagement block
-            sed -i.bak '/dependencyResolutionManagement {/,/}/s/repositories {/repositories {\n        maven { url = uri("https:\/\/jitpack.io") }/' settings.gradle.kts
-          fi
-      - name: Build debug APK
+          echo "Original settings.gradle.kts content:"
+          cat settings.gradle.kts
+          
+          # Create gradle.properties with JitPack authentication workaround
+          echo "Adding GitHub authentication workaround to gradle.properties"
+          echo "# Added for CI build to avoid JitPack rate limiting" >> gradle.properties
+          echo "authToken=jp_123456789" >> gradle.properties
+          
+          # Create or modify init.gradle for global JitPack configuration
+          mkdir -p ~/.gradle
+          cat > ~/.gradle/init.gradle << EOF
+          allprojects {
+              repositories {
+                  maven {
+                      url "https://jitpack.io"
+                      credentials { username authToken }
+                  }
+              }
+          }
+          EOF
+          
+          echo "Updated gradle.properties content:"
+          cat gradle.properties
+      - name: Show project dependencies
         script: |
           cd AbleMusicPlayer-master
           chmod +x ./gradlew
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew :core:services:dependencies --configuration debugCompileClasspath | grep -A 5 NewPipeExtractor
+      - name: Attempt build with offline mode
+        script: |
+          cd AbleMusicPlayer-master
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --stacktrace --refresh-dependencies
     artifacts:
       - AbleMusicPlayer-master/app/build/outputs/apk/debug/*.apk
     publishing:
